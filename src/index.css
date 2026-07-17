@@ -1,151 +1,657 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&display=swap");
 
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #030014;
+  /* Simple palette: plain white/light-gray surfaces, one amber accent. */
+  --color-paper: #ffffff;
+  --color-paper-light: #f6f5f3;
+  --color-ink: #14181c;
+  --color-ink-soft: #6b7280;
+  --color-amber: #e8a63c;
+  --color-amber-dark: #c98a22;
 
-  --color-light-100: #cecefb;
-  --color-light-200: #a8b5db;
-
-  --color-gray-100: #9ca4ab;
-
-  --color-dark-100: #0f0d23;
-
-  --font-dm-sans: DM Sans, sans-serif;
+  --font-body: "Work Sans", sans-serif;
 
   --breakpoint-xs: 480px;
-
-  --background-image-hero-pattern: url("/hero-bg.png");
 }
 
 @layer base {
   body {
-    font-family: "DM Sans", serif;
-    font-optical-sizing: auto;
-    background: #030014;
+    font-family: var(--font-body);
+    background: var(--color-paper);
+    color: var(--color-ink);
   }
 
   h1 {
-    @apply mx-auto max-w-4xl text-center text-5xl font-bold leading-tight tracking-[-1%] text-white sm:text-[64px] sm:leading-[76px];
+    @apply mx-auto max-w-3xl text-center text-4xl font-extrabold leading-tight tracking-tight text-ink sm:text-6xl sm:leading-[1.05];
   }
 
   h2 {
-    @apply text-2xl font-bold text-white sm:text-3xl;
+    @apply text-2xl font-bold text-ink sm:text-3xl;
   }
 
   main {
-    @apply min-h-screen relative bg-primary;
+    @apply min-h-screen bg-paper;
   }
 
-  header {
-    @apply sm:mt-10 mt-5;
+  /* Visible focus ring everywhere, since the redesign swaps in custom
+     rounded/pill controls that don't get a default outline for free. */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible {
+    outline: 2px solid var(--color-amber-dark);
+    outline-offset: 2px;
   }
 
-  header img {
-    @apply w-full max-w-lg h-auto object-contain mx-auto drop-shadow-md;
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
   }
 }
 
 @layer components {
-  .pattern {
-    @apply bg-hero-pattern w-screen h-screen bg-center bg-cover absolute z-0;
-  }
-
   .wrapper {
-    @apply px-5 py-12 xs:p-10 max-w-7xl mx-auto flex flex-col relative z-10;
+    @apply px-5 py-12 xs:p-10 max-w-6xl mx-auto flex flex-col;
   }
 
-  .trending {
-    @apply mt-20;
+  /* Site-wide top bar, shown above the wrapper on every page. */
+  .site-nav {
+    @apply flex items-center justify-between max-w-6xl mx-auto px-5 xs:px-10 pt-6;
+  }
 
-    & ul {
-      @apply flex flex-row overflow-y-auto gap-5 -mt-10 w-full hide-scrollbar;
-    }
+  .site-logo {
+    @apply font-extrabold text-lg text-ink whitespace-nowrap shrink-0;
+  }
 
-    & ul li {
-      @apply min-w-[230px] flex flex-row items-center;
-    }
+  .site-nav-actions {
+    @apply flex items-center gap-3 sm:gap-5;
+  }
 
-    & ul li p {
-      @apply fancy-text mt-[22px] text-nowrap;
-    }
+  .watchlist-link {
+    @apply inline-flex items-center gap-2 text-sm font-semibold text-ink-soft hover:text-ink;
+  }
 
-    & ul li img {
-      @apply w-[127px] h-[163px] rounded-lg object-cover -ml-3.5;
+  /* Nav link labels collapse to icon-only on the smallest screens so the
+     bar doesn't crowd the wordmark. */
+  .nav-label {
+    @apply hidden xs:inline;
+  }
+
+  .nav-signin {
+    @apply px-4 py-1.5 rounded-full text-sm font-semibold bg-amber text-white transition-colors hover:bg-amber-dark;
+  }
+
+  .nav-user {
+    @apply inline-flex items-center gap-2 text-sm font-semibold text-ink-soft hover:text-ink;
+
+    & .nav-email {
+      @apply hidden sm:inline max-w-[10rem] truncate;
     }
   }
 
-  .search {
-    @apply w-full bg-light-100/5 px-4 py-3 rounded-lg mt-10 max-w-3xl mx-auto;
+  .back-to-top {
+    @apply fixed bottom-6 right-6 flex items-center justify-center w-11 h-11 rounded-full bg-ink text-white shadow-lg transition-colors hover:bg-ink/80 z-20;
+  }
+
+  /* Sign-in modal */
+  .auth-modal-overlay {
+    @apply fixed inset-0 bg-ink/50 flex items-center justify-center p-5 z-30;
+  }
+
+  .auth-modal {
+    @apply relative w-full max-w-sm bg-paper rounded-2xl border border-ink/10 shadow-xl p-6;
+
+    & h2 {
+      @apply text-xl mb-4;
+    }
+  }
+
+  .auth-modal-close {
+    @apply absolute top-4 right-4 text-ink-soft hover:text-ink;
+  }
+
+  .google-button {
+    @apply w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold border border-ink/10 bg-paper-light text-ink transition-colors hover:bg-ink/5;
+  }
+
+  .auth-divider {
+    @apply flex items-center gap-3 my-4 text-xs text-ink-soft before:content-[''] before:flex-1 before:h-px before:bg-ink/10 after:content-[''] after:flex-1 after:h-px after:bg-ink/10;
+  }
+
+  .auth-form {
+    @apply flex flex-col gap-3;
+
+    & input {
+      @apply w-full px-4 py-2.5 rounded-full border border-ink/10 bg-paper-light text-sm text-ink placeholder-ink-soft/70 outline-hidden;
+    }
+  }
+
+  .auth-error {
+    @apply text-sm text-red-600;
+  }
+
+  .auth-message {
+    @apply text-sm text-amber-dark;
+  }
+
+  .auth-links {
+    @apply mt-4 flex flex-col items-center gap-2 text-xs;
+
+    & button {
+      @apply text-ink-soft hover:text-ink underline underline-offset-2;
+    }
+  }
+
+  .accent-word {
+    color: var(--color-amber);
+  }
+
+  /* Cinematic home hero: the featured backdrop fills the panel, a dark scrim
+     keeps the centered headline/search legible over any image. isolate makes
+     the -z-10 background/scrim paint within the hero, not behind the page. */
+  .home-hero {
+    @apply relative isolate overflow-hidden rounded-3xl bg-ink flex flex-col items-center justify-center text-center px-5 py-16 sm:py-24 min-h-[480px] sm:min-h-[560px];
+  }
+
+  .home-hero-bg {
+    @apply absolute inset-0 w-full h-full object-cover -z-10;
+  }
+
+  .home-hero::after {
+    content: "";
+    @apply absolute inset-0 -z-10;
+    background: linear-gradient(
+      to bottom,
+      rgba(20, 24, 28, 0.78),
+      rgba(20, 24, 28, 0.72) 55%,
+      rgba(20, 24, 28, 0.9)
+    );
+  }
+
+  .home-hero-inner {
+    @apply w-full max-w-2xl flex flex-col items-center;
+
+    /* Headline + accent on the dark hero: override the global (dark, wrapping)
+       h1 to white, and let the amber accent word pop without a highlighter. */
+    & h1 {
+      @apply text-white;
+    }
+  }
+
+  .home-hero-eyebrow {
+    @apply text-xs font-semibold tracking-[0.25em] uppercase text-amber mb-3;
+  }
+
+  .home-hero-subtitle {
+    @apply mt-4 text-white/75 max-w-xl text-base sm:text-lg;
+  }
+
+  /* Glass pill under the search linking to the current featured movie —
+     folds the old standalone "Featured" spotlight section into the hero. */
+  .home-hero-featured {
+    @apply mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm text-white bg-white/10 border border-white/20 backdrop-blur-sm transition-colors hover:bg-white/20;
+
+    & .label {
+      @apply text-xs font-semibold uppercase tracking-wide text-amber;
+    }
+
+    & .title {
+      @apply font-semibold max-w-[16rem] truncate;
+    }
+  }
+
+  /* Feature strip: short "what this app does" callouts, Plex-style. */
+  .features {
+    @apply mt-20 grid grid-cols-1 gap-8 sm:grid-cols-3;
+
+    & .feature {
+      @apply flex flex-col items-center text-center gap-3 sm:items-start sm:text-left;
+    }
+
+    & .feature .icon {
+      @apply flex items-center justify-center w-11 h-11 rounded-full bg-amber/15 text-amber-dark text-xl shrink-0;
+    }
+
+    & .feature h3 {
+      @apply font-bold text-ink text-base;
+    }
+
+    & .feature p {
+      @apply text-sm text-ink-soft;
+    }
+  }
+
+  /* Search bar: the hero's primary action, so it gets a shadow that lifts
+     on focus rather than sitting completely flat like the other pills. */
+  .ticket-search {
+    @apply w-full bg-paper-light border border-ink/10 rounded-full mt-8 max-w-2xl mx-auto shadow-sm transition-shadow;
+
+    &:focus-within {
+      @apply shadow-md border-amber/40;
+    }
 
     & div {
-      @apply relative flex items-center;
+      @apply relative flex items-center gap-3 px-5 py-4;
+    }
+
+    & svg {
+      @apply text-ink-soft text-lg shrink-0;
     }
 
     & input {
-      @apply w-full bg-transparent py-2 sm:pr-10 pl-10 text-base text-gray-200 placeholder-light-200 outline-hidden;
+      @apply w-full bg-transparent text-base text-ink placeholder-ink-soft/70 outline-hidden;
     }
+  }
+
+  .section-label {
+    @apply text-xs font-semibold tracking-[0.15em] uppercase text-ink-soft mb-1;
+  }
+
+  /* Horizontal poster rail: shared by Trending Now and Recently Viewed — a
+     scrollable row of poster tiles (poster on top, title below), with a rank
+     badge overlaid for Trending. The right-edge mask hints "scrolls". */
+  .poster-row {
+    @apply mt-16;
+
+    & ul {
+      @apply flex flex-row overflow-x-auto gap-4 pb-2 w-full hide-scrollbar;
+      -webkit-mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%);
+      mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%);
+    }
+
+    & ul li {
+      @apply w-[132px] sm:w-[150px] shrink-0;
+    }
+
+    & .poster-tile {
+      @apply block;
+    }
+
+    & .poster-wrap {
+      @apply relative aspect-[2/3] rounded-xl overflow-hidden border border-ink/10 bg-paper-light transition-shadow;
+    }
+
+    & .poster-tile:hover .poster-wrap {
+      @apply shadow-md;
+    }
+
+    & .poster-wrap img {
+      @apply w-full h-full object-cover;
+    }
+
+    & .rank {
+      @apply absolute top-2 left-2 flex items-center justify-center w-7 h-7 rounded-full bg-amber text-ink font-bold text-sm shadow;
+    }
+
+    & p.title {
+      @apply mt-2 text-sm font-semibold text-ink line-clamp-2;
+    }
+  }
+
+  /* Category (segmented tabs, left) + the genre/sort dropdowns (right) on a
+     single tidy row that wraps on narrow screens. */
+  .browse-toolbar {
+    @apply flex flex-wrap items-end justify-between gap-4;
+  }
+
+  .toolbar-selects {
+    @apply flex flex-wrap items-end gap-3;
+  }
+
+  .filter-group {
+    @apply min-w-0;
+  }
+
+  .filter-label {
+    @apply text-xs font-semibold text-ink-soft uppercase tracking-wide mb-2;
+  }
+
+  /* Category is one grouped "track" (a segmented control) so it reads as a
+     single control, distinct from the dropdowns beside it. */
+  .category-tabs {
+    @apply inline-flex flex-wrap gap-1 p-1 rounded-full bg-paper-light border border-ink/10;
+  }
+
+  .category-tab {
+    @apply px-4 py-2 rounded-full text-sm font-semibold text-ink-soft transition-colors hover:text-ink;
+
+    &.active {
+      @apply bg-amber text-white;
+    }
+  }
+
+  /* Shared style for the Genre and Sort dropdowns. */
+  .sort-select {
+    @apply px-4 py-2 rounded-full text-sm font-semibold text-ink bg-paper-light border border-ink/10 cursor-pointer min-w-[9.5rem];
+  }
+
+  .load-more-sentinel {
+    @apply min-h-[1px];
   }
 
   .all-movies {
-    @apply space-y-9;
+    @apply space-y-6 mt-16;
 
     & ul {
-      @apply grid grid-cols-1 gap-5 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4;
+      @apply grid grid-cols-1 gap-6 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4;
     }
   }
 
+  /* Movie card: plain flat card, poster + details, amber rating badge.
+     It's a Link (an <a>), so block + a hover cue make it read as clickable. */
   .movie-card {
-    @apply bg-dark-100 p-5 rounded-2xl shadow-inner shadow-light-100/10;
+    @apply block bg-paper-light rounded-2xl border border-ink/10 overflow-hidden transition-shadow hover:shadow-md;
+
+    & .poster {
+      @apply relative;
+    }
 
     & img {
-      @apply rounded-lg h-auto w-full;
+      @apply w-full h-auto object-cover;
+    }
+
+    & .rating-stamp {
+      @apply absolute top-3 right-3 flex items-center justify-center w-10 h-10 rounded-full bg-amber text-ink font-bold text-sm;
+    }
+
+    & .watchlist-toggle {
+      @apply absolute top-3 left-3 flex items-center justify-center w-9 h-9 rounded-full bg-ink/60 text-white backdrop-blur-sm transition-colors hover:bg-ink/80;
+
+      &.saved {
+        @apply bg-amber text-white;
+      }
+    }
+
+    & .details {
+      @apply p-5;
     }
 
     & h3 {
-      @apply text-white font-bold text-base line-clamp-1;
+      @apply text-ink font-bold text-base line-clamp-1;
     }
 
-    & .content {
-      @apply mt-2 flex flex-row items-center flex-wrap gap-2;
+    & .meta {
+      @apply mt-2 flex flex-row items-center flex-wrap gap-x-2 text-xs text-ink-soft;
     }
 
-    & .rating {
-      @apply flex flex-row items-center gap-1;
-    }
-
-    & .rating img {
-      @apply size-4 object-contain;
-    }
-
-    & .rating p {
-      @apply font-bold text-base text-white;
-    }
-
-    & .content span {
-      @apply text-sm text-gray-100;
-    }
-
-    & .content .lang {
-      @apply capitalize text-gray-100 font-medium text-base;
-    }
-
-    & .content .year {
-      @apply text-gray-100 font-medium text-base;
+    & .meta .dot {
+      @apply text-ink-soft/50;
     }
   }
-}
 
-@utility text-gradient {
-  @apply bg-linear-to-r from-[#D6C7FF] to-[#AB8BFF] bg-clip-text text-transparent;
-}
+  /* Shared state block for loading / empty / error messaging. */
+  .state-message {
+    @apply flex flex-col items-center justify-center gap-3 py-16 text-center text-ink-soft;
+  }
 
-@utility fancy-text {
-  -webkit-text-stroke: 5px rgba(206, 206, 251, 0.5);
-  font-size: 190px;
-  font-family: "Bebas Neue", sans-serif;
+  .ticket-button {
+    @apply bg-amber text-white px-4 py-2 rounded-full font-semibold text-sm transition-colors hover:bg-amber-dark disabled:opacity-40 disabled:hover:bg-amber disabled:cursor-not-allowed;
+  }
+
+  footer {
+    @apply mt-20 pt-8 border-t border-ink/10 text-center text-xs text-ink-soft;
+
+    & a {
+      @apply text-ink underline underline-offset-2 hover:text-amber-dark;
+    }
+  }
+
+  /* Movie details page */
+  .details-toolbar {
+    @apply flex items-center justify-between;
+  }
+
+  .back-link {
+    @apply inline-flex items-center gap-2 text-sm font-semibold text-ink-soft hover:text-ink mb-6;
+  }
+
+  .share-button {
+    @apply inline-flex items-center gap-2 text-sm font-semibold text-ink-soft hover:text-ink px-3 py-1.5 rounded-full border border-ink/10 bg-paper-light transition-colors;
+  }
+
+  .watchlist-button {
+    @apply mt-4 inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full border border-ink/10 bg-paper-light text-ink transition-colors hover:border-amber;
+
+    &.saved {
+      @apply bg-amber/15 text-amber-dark border-amber/30;
+    }
+  }
+
+  /* Backdrop banner with the poster overlapping its bottom edge, the
+     classic "movie details" layout. .no-backdrop drops the overlap when
+     a movie has no backdrop image to overlap onto. */
+  .details-hero {
+    @apply relative rounded-3xl border border-ink/10 bg-paper-light overflow-hidden;
+
+    & .backdrop {
+      @apply w-full h-48 sm:h-72 object-cover block;
+    }
+
+    & .details-hero-content {
+      @apply relative flex flex-col sm:flex-row items-start gap-6 p-6 sm:p-8;
+    }
+
+    /* Only the poster pops up over the backdrop's bottom edge — the title
+       stays in normal flow below it, so text never sits on the image. */
+    & .details-hero-content .poster {
+      @apply w-32 sm:w-44 rounded-xl shadow-lg border-4 border-paper-light shrink-0 -mt-16 sm:-mt-24;
+    }
+
+    & .details-hero-content.no-backdrop .poster {
+      @apply mt-0;
+    }
+  }
+
+  /* Page title on non-home pages: the global h1 (sized/centered for the
+     home hero) doesn't fit these left-aligned layouts. */
+  .page-heading {
+    @apply text-left mx-0 max-w-none text-2xl sm:text-4xl leading-tight;
+  }
+
+  .page-header {
+    @apply mb-10;
+  }
+
+  .tagline {
+    @apply mt-1 italic text-ink-soft;
+  }
+
+  .meta-row {
+    @apply mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-soft;
+  }
+
+  .rating-pill {
+    @apply inline-flex items-center gap-1 font-bold text-ink;
+  }
+
+  .genres {
+    @apply mt-4 flex flex-wrap gap-2;
+  }
+
+  .genre-chip {
+    @apply text-xs font-semibold px-3 py-1 rounded-full bg-amber/15 text-amber-dark;
+  }
+
+  /* Full wrapper width (matching the hero above it) rather than a
+     left-hugging max-w-3xl column — that left everything bunched up with a
+     huge dead zone on wide screens. Long-form text (overview, reviews) gets
+     its own max-w-2xl instead, so lines don't run edge-to-edge unreadably. */
+  .details-body {
+    @apply mt-10;
+
+    & h2 {
+      @apply mb-3 mt-12 pt-8 border-t border-ink/10 first:mt-0 first:pt-0 first:border-0;
+    }
+
+    & p {
+      @apply text-ink-soft leading-relaxed;
+    }
+  }
+
+  .overview-text {
+    @apply max-w-2xl;
+  }
+
+  /* Star rating widget (StarRating component). Filled stars are solid amber
+     (fill overrides Lucide's default fill="none" — CSS wins over the SVG
+     presentation attribute), unfilled ones are faint grey outlines. */
+  .star-rating {
+    @apply inline-flex items-center gap-1 text-2xl text-ink-soft/30;
+
+    & .star-button {
+      @apply transition-colors leading-none;
+    }
+
+    & .star-button:hover,
+    & .star-button.filled,
+    & .filled {
+      @apply text-amber;
+    }
+
+    & .star-button.filled svg,
+    &.readonly .filled {
+      fill: currentColor;
+    }
+
+    &.readonly {
+      @apply text-lg;
+    }
+  }
+
+  .rating-row {
+    @apply flex flex-wrap items-center gap-x-4 gap-y-2;
+  }
+
+  .rating-hint {
+    @apply text-sm text-ink-soft;
+  }
+
+  /* Ratings page: each grid item stacks the movie card over its star score. */
+  .rated-item {
+    @apply flex flex-col gap-2;
+  }
+
+  .video-frame {
+    @apply relative w-full aspect-video rounded-2xl overflow-hidden bg-ink;
+
+    & iframe {
+      @apply absolute inset-0 w-full h-full;
+    }
+  }
+
+  .director-line {
+    @apply mt-2 text-ink-soft;
+  }
+
+  /* Cast row: wide enough that most names fit on one line, and names that
+     don't get to wrap to a second line instead of being clipped mid-word.
+     The mask fade signals "this scrolls" instead of looking cut off when a
+     movie has more cast than fits in view. */
+  .cast-row {
+    @apply mt-4 flex flex-row overflow-x-auto gap-4 pb-2 hide-scrollbar;
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
+    mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
+
+    & li {
+      @apply min-w-[130px] shrink-0;
+    }
+
+    & li a {
+      @apply block text-center;
+    }
+
+    & img {
+      @apply w-20 h-20 rounded-full object-cover mx-auto border border-ink/10;
+    }
+
+    & .name {
+      @apply mt-2 text-sm font-semibold text-ink line-clamp-2;
+    }
+
+    & .character {
+      @apply text-xs text-ink-soft line-clamp-1;
+    }
+  }
+
+  .watch-providers {
+    @apply flex flex-wrap gap-3;
+
+    & img {
+      @apply w-12 h-12 rounded-xl object-cover border border-ink/10;
+    }
+  }
+
+  .more-like-this {
+    @apply mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4;
+  }
+
+  /* Each review is its own card now, matching the card language used for
+     movie tiles and poster-row items elsewhere on the site. */
+  .reviews {
+    @apply mt-4 grid gap-4 sm:grid-cols-2;
+
+    & li {
+      @apply bg-paper-light border border-ink/10 rounded-2xl p-5;
+    }
+
+    & .review-author {
+      @apply flex items-center gap-2 font-semibold text-ink text-sm;
+    }
+
+    & .review-rating {
+      @apply inline-flex items-center gap-1 text-amber-dark font-bold;
+    }
+
+    & .review-content {
+      @apply mt-2 text-sm text-ink-soft leading-relaxed;
+    }
+  }
+
+  .fact-list {
+    @apply mt-4 grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm bg-paper-light border border-ink/10 rounded-2xl p-5 sm:max-w-md;
+
+    & dt {
+      @apply text-ink-soft font-medium;
+    }
+
+    & dd {
+      @apply text-ink;
+    }
+  }
+
+  /* Person page: photo + info side by side, no backdrop banner needed. */
+  .person-hero {
+    @apply flex flex-col sm:flex-row items-start gap-6;
+
+    & .person-photo {
+      @apply w-32 sm:w-40 rounded-2xl object-cover border border-ink/10 shrink-0;
+    }
+  }
+
+  /* Placeholder card shown while the browse grid is loading. */
+  .skeleton-card {
+    @apply bg-paper-light rounded-2xl border border-ink/10 overflow-hidden animate-pulse;
+  }
+
+  .skeleton-poster {
+    @apply w-full aspect-[2/3] bg-ink/10;
+  }
+
+  .skeleton-line {
+    @apply h-3 bg-ink/10 rounded;
+  }
+
+  /* Generic pulsing block for the details/person page skeletons. */
+  .skeleton-block {
+    @apply bg-ink/10 rounded-2xl animate-pulse;
+  }
+
+  .skeleton-pulse {
+    @apply animate-pulse;
+  }
 }
 
 @utility hide-scrollbar {

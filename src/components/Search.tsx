@@ -1,3 +1,5 @@
+// Ticket-window search bar: pill-shaped input styled like a box-office
+// counter. Same props/behavior as before, presentation only.
 import { LuSearch } from "react-icons/lu";
 
 type SearchProps = {
@@ -7,12 +9,13 @@ type SearchProps = {
 
 const Search: React.FC<SearchProps> = ({ searchTerm, setSearchTerm }) => {
   return (
-    <div className="search">
+    <div className="ticket-search">
       <div>
-        <LuSearch className="text-gray-50 text-lg" />
+        <LuSearch aria-hidden="true" />
         <input
           type="text"
-          placeholder="Search through thousands of movies"
+          placeholder="Search for a title..."
+          aria-label="Search for a movie title"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />

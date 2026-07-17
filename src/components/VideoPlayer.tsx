@@ -1,3 +1,5 @@
+// Embeds the movie's YouTube trailer (if TMDB has one on file) in a
+// responsive 16:9 frame. Shows a plain message when no trailer exists.
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
@@ -9,6 +11,7 @@ import {
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
   const [videoKey, setVideoKey] = useState<string | null>(null);
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     const fetchVideo = async () => {
@@ -27,28 +30,27 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ movieId }) => {
         if (trailer) setVideoKey(trailer.key);
       } catch (error) {
         console.error("Error fetching video:", error);
+      } finally {
+        setChecked(true);
       }
     };
 
     fetchVideo();
   }, [movieId]);
 
-  return (
-    <div>
-      {videoKey ? (
-        <iframe
-          width="560"
-          height="315"
-          src={`https://www.youtube.com/embed/${videoKey}`}
-          title="Movie Trailer"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        ></iframe>
-      ) : (
-        <p>No trailer available</p>
-      )}
+  if (!checked) return null;
+
+  return videoKey ? (
+    <div className="video-frame">
+      <iframe
+        src={`https://www.youtube.com/embed/${videoKey}`}
+        title="Movie Trailer"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      ></iframe>
     </div>
+  ) : (
+    <p className="text-ink-soft text-sm">No trailer available.</p>
   );
 };
 
