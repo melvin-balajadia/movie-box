@@ -2,6 +2,7 @@
 // password (and signup vs signin within the password flow).
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { LuX, LuClapperboard } from "react-icons/lu";
+import { FcGoogle } from "react-icons/fc";
 import { useAuth } from "./AuthProvider";
 import { supabase } from "../utilities/supabase";
 
@@ -148,6 +149,7 @@ const AuthModal = () => {
         </p>
 
         <button type="button" className="google-button" onClick={handleGoogle}>
+          <FcGoogle className="text-xl" aria-hidden="true" />
           Continue with Google
         </button>
 

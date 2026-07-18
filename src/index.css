@@ -59,6 +59,16 @@
     outline-offset: 2px;
   }
 
+  /* Clickables show a pointer cursor. Browsers default <button>/<select> to
+     an arrow; this covers them (and role="button") in one place. Disabled
+     buttons keep their own cursor (e.g. .ticket-button's not-allowed). */
+  button:not(:disabled),
+  select:not(:disabled),
+  [role="button"],
+  summary {
+    cursor: pointer;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     * {
       animation-duration: 0.001ms !important;
