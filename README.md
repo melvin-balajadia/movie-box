@@ -1,70 +1,166 @@
-# React + TypeScript + Vite
+# Movie Box
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A movie & TV discovery hub built with React, TypeScript, Vite, and Tailwind CSS.
+It pulls live data from **TMDB** and uses **Supabase** (Postgres + Auth) for
+accounts, watchlists, and ratings.
 
-## Setup
+## Features
 
-1. Copy `.env.example` to `.env` and fill in:
-   - `VITE_TMDB_API_KEY` — a TMDB API read access token from https://www.themoviedb.org/settings/api
-   - `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` — from your Supabase project's Settings → API page
-2. In the Supabase project's SQL editor, create the table trending searches are tracked in:
+- Search movies, TV shows, and people (autocomplete + recent searches)
+- Browse by category, genre, and sort; infinite scroll
+- Trending chart driven by real user searches
+- Rich detail pages: cast & crew, trailers, image gallery, "where to watch"
+  (by region), recommendations, reviews, and collections
+- Accounts (Google, magic link, or email/password) with a per-user watchlist
+  and 1–5 star ratings, plus a profile stats page
+- Movies **and** TV shows, with their own detail pages
+- Dark mode (default), responsive layout, skeleton loading states
 
-   ```sql
-   create table searches (
-     id bigint generated always as identity primary key,
-     movie_id integer not null unique,
-     title text not null,
-     poster_url text not null,
-     count integer not null default 1,
-     updated_at timestamptz not null default now()
-   );
-   ```
+## Tech stack
 
-3. `npm install` then `npm run dev`.
+React · TypeScript · Vite · Tailwind CSS · React Router · Supabase
+(Postgres, Auth, Row-Level Security) · TMDB API · deployed on Vercel.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Getting started
 
-## Expanding the ESLint configuration
+### Prerequisites
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+- **Node.js 18+**
+- A **TMDB** account — grab an API **Read Access Token** (v4 auth) from
+  https://www.themoviedb.org/settings/api
+- A free **Supabase** project — https://supabase.com
 
-- Configure the top-level `parserOptions` property like this:
+### 1. Install
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-});
+```bash
+git clone https://github.com/melvin-balajadia/movie-box.git
+cd movie-box
+npm install
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+### 2. Environment variables
 
-```js
-// eslint.config.js
-import react from "eslint-plugin-react";
+Copy the example file and fill in your keys:
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: "18.3" } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs["jsx-runtime"].rules,
-  },
-});
+```bash
+cp .env.example .env
 ```
+
+```ini
+VITE_TMDB_API_KEY=your-tmdb-read-access-token
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-public-key
+```
+
+The Supabase URL and anon key are under **Project Settings → API**. The anon
+key is safe to expose in the client — Row-Level Security (below) is what
+protects user data.
+
+### 3. Set up the database
+
+In the Supabase dashboard, open **SQL Editor → New query**, paste the following,
+and run it. It creates all three tables (trending searches, watchlists, and
+ratings) with the right policies.
+
+```sql
+-- Trending: search counts (written anonymously, so no RLS needed)
+create table searches (
+  id bigint generated always as identity primary key,
+  movie_id integer not null unique,
+  title text not null,
+  poster_url text not null,
+  count integer not null default 1,
+  updated_at timestamptz not null default now()
+);
+
+-- Per-user watchlist
+create table watchlist (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  movie_id integer not null,
+  media_type text not null default 'movie',
+  title text not null,
+  poster_path text not null,
+  vote_average numeric not null,
+  release_date text not null,
+  original_language text not null,
+  created_at timestamptz not null default now(),
+  unique (user_id, media_type, movie_id)
+);
+alter table watchlist enable row level security;
+create policy "Users read own watchlist"   on watchlist for select using (auth.uid() = user_id);
+create policy "Users insert own watchlist" on watchlist for insert with check (auth.uid() = user_id);
+create policy "Users delete own watchlist" on watchlist for delete using (auth.uid() = user_id);
+
+-- Per-user ratings (1–5 stars)
+create table ratings (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  movie_id integer not null,
+  media_type text not null default 'movie',
+  rating integer not null check (rating between 1 and 5),
+  title text not null,
+  poster_path text not null,
+  vote_average numeric not null,
+  release_date text not null,
+  original_language text not null,
+  updated_at timestamptz not null default now(),
+  unique (user_id, media_type, movie_id)
+);
+alter table ratings enable row level security;
+create policy "Users read own ratings"   on ratings for select using (auth.uid() = user_id);
+create policy "Users insert own ratings" on ratings for insert with check (auth.uid() = user_id);
+create policy "Users update own ratings" on ratings for update using (auth.uid() = user_id);
+create policy "Users delete own ratings" on ratings for delete using (auth.uid() = user_id);
+```
+
+### 4. Configure authentication
+
+In the Supabase dashboard → **Authentication**:
+
+- **URL Configuration** → set **Site URL** to `http://localhost:5183` for local
+  dev, and add both `http://localhost:5183/**` and your deployed URL (e.g.
+  `https://your-app.vercel.app/**`) to **Redirect URLs**.
+- **Email** and **magic link** work out of the box.
+- **Google** (optional) → **Providers → Google**: create an OAuth client in the
+  [Google Cloud Console](https://console.cloud.google.com/), add
+  `https://your-project.supabase.co/auth/v1/callback` as an authorized redirect
+  URI, then paste the Client ID/Secret into Supabase and enable it.
+
+### 5. Run
+
+```bash
+npm run dev
+```
+
+Open http://localhost:5183
+
+## Scripts
+
+| Command           | Description                       |
+| ----------------- | --------------------------------- |
+| `npm run dev`     | Start the dev server (port 5183)  |
+| `npm run build`   | Type-check and build for production |
+| `npm run preview` | Preview the production build      |
+| `npm run lint`    | Run ESLint                        |
+
+## Deployment (Vercel)
+
+1. Import the repo into Vercel — it auto-detects Vite (build: `npm run build`,
+   output: `dist`). The included `vercel.json` handles SPA routing.
+2. Add the environment variables (`VITE_TMDB_API_KEY`, `VITE_SUPABASE_URL`,
+   `VITE_SUPABASE_ANON_KEY`) in **Project Settings → Environment Variables**.
+3. **Optional — social link previews:** the `middleware.ts` edge function
+   serves Open Graph tags to crawlers on `/movie/:id` and `/tv/:id`. For it to
+   work, add a server-side `TMDB_API_KEY` env var in Vercel (same TMDB token,
+   without the `VITE_` prefix so it isn't bundled into the client).
+4. After the first deploy, add the Vercel URL to Supabase's auth Redirect URLs
+   (step 4) so sign-in works in production.
+
+## Credits
+
+Movie and TV data from [TMDB](https://www.themoviedb.org/) (not endorsed or
+certified by TMDB). Built by
+[Melvin Balajadia](https://melvinbalajadia.vercel.app/).
