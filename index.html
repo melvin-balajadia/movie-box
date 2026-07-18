@@ -10,16 +10,12 @@
       content="Discover movies and TV shows — search, browse trending charts, watch trailers, and build your watchlist and ratings."
     />
     <!-- Set the theme before first paint so there's no flash of the wrong
-         theme: use the saved choice, else fall back to the OS preference. -->
+         theme: use the saved choice, else default to dark. -->
     <script>
       (function () {
         try {
           var t = localStorage.getItem("theme");
-          if (t !== "light" && t !== "dark") {
-            t = window.matchMedia("(prefers-color-scheme: dark)").matches
-              ? "dark"
-              : "light";
-          }
+          if (t !== "light" && t !== "dark") t = "dark";
           document.documentElement.setAttribute("data-theme", t);
         } catch (e) {}
       })();
