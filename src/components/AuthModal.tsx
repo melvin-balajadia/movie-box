@@ -1,7 +1,7 @@
 // Sign-in modal: Google OAuth, or email with a choice of magic link vs
 // password (and signup vs signin within the password flow).
 import { useState, useEffect, useRef, FormEvent } from "react";
-import { LuX } from "react-icons/lu";
+import { LuX, LuClapperboard } from "react-icons/lu";
 import { useAuth } from "./AuthProvider";
 import { supabase } from "../utilities/supabase";
 
@@ -133,7 +133,19 @@ const AuthModal = () => {
           <LuX aria-hidden="true" />
         </button>
 
+        <div className="auth-brand">
+          <span className="logo-mark">
+            <LuClapperboard aria-hidden="true" />
+          </span>
+          <span className="logo-word">
+            Movie<span className="logo-accent">Box</span>
+          </span>
+        </div>
+
         <h2>Sign in to save movies</h2>
+        <p className="auth-subtitle">
+          Save titles to your watchlist and rate what you've seen.
+        </p>
 
         <button type="button" className="google-button" onClick={handleGoogle}>
           Continue with Google

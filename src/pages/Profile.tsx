@@ -17,6 +17,7 @@ function Profile() {
   const [rated, setRated] = useState<RatedMovie[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistMovie[]>([]);
   const [loading, setLoading] = useState(true);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   usePageTitle("Profile");
 
@@ -83,8 +84,13 @@ function Profile() {
           <>
             <section className="profile-hero">
               <div className="profile-identity">
-                {avatarUrl ? (
-                  <img className="profile-avatar" src={avatarUrl} alt="" />
+                {avatarUrl && !avatarFailed ? (
+                  <img
+                    className="profile-avatar"
+                    src={avatarUrl}
+                    alt=""
+                    onError={() => setAvatarFailed(true)}
+                  />
                 ) : (
                   <span className="profile-avatar profile-avatar-initial">
                     {initial}

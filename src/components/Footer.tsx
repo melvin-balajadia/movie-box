@@ -14,6 +14,16 @@ const Footer = () => {
         but is not endorsed or certified by TMDB.
       </p>
       <p className="mt-1">Built with React, Tailwind CSS &amp; Supabase.</p>
+      <p className="mt-1">
+        Created by{" "}
+        <a
+          href="https://melvinbalajadia.vercel.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Melvin Balajadia
+        </a>
+      </p>
     </footer>
   );
 };

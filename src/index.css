@@ -89,7 +89,7 @@
   }
 
   .logo-mark {
-    @apply flex items-center justify-center w-7.5 h-7.5 rounded-xl bg-amber text-white text-xl shadow-sm;
+    @apply flex items-center justify-center w-7 h-7 rounded-xl bg-amber text-white text-xl shadow-sm;
   }
 
   .logo-word {
@@ -161,11 +161,20 @@
   }
 
   .auth-modal {
-    @apply relative w-full max-w-sm bg-paper rounded-2xl border border-ink/10 shadow-xl p-6;
+    @apply relative w-full max-w-sm bg-paper rounded-2xl border border-ink/10 shadow-xl p-6 text-center;
 
     & h2 {
-      @apply text-xl mb-4;
+      @apply text-xl;
     }
+  }
+
+  /* Brand lockup at the top of the sign-in modal. */
+  .auth-brand {
+    @apply flex items-center justify-center gap-2 mb-4;
+  }
+
+  .auth-subtitle {
+    @apply text-sm text-ink-soft mt-1 mb-5;
   }
 
   .auth-modal-close {
@@ -200,7 +209,7 @@
     @apply mt-4 flex flex-col items-center gap-2 text-xs;
 
     & button {
-      @apply text-ink-soft hover:text-ink underline underline-offset-2;
+      @apply text-amber-dark font-medium transition-colors hover:text-amber;
     }
   }
 
@@ -519,7 +528,7 @@
     @apply mt-20 pt-8 border-t border-ink/10 text-center text-xs text-ink-soft;
 
     & a {
-      @apply text-ink underline underline-offset-2 hover:text-amber-dark;
+      @apply text-ink font-medium transition-colors hover:text-amber-dark;
     }
   }
 
