@@ -372,6 +372,26 @@
     @apply text-xs font-semibold tracking-[0.15em] uppercase text-ink-soft mb-1;
   }
 
+  /* Branded placeholder for missing posters (see PosterImage). Fills the
+     poster area with a subtle amber-tinted gradient, a clapperboard, and the
+     title so a missing image still looks intentional. */
+  .poster-fallback {
+    @apply w-full aspect-[2/3] flex flex-col items-center justify-center gap-2 px-3 text-center;
+    background: linear-gradient(
+      150deg,
+      var(--color-paper-light),
+      color-mix(in srgb, var(--color-amber) 12%, var(--color-paper-light))
+    );
+
+    & svg {
+      @apply text-3xl text-amber-dark/60;
+    }
+
+    & span {
+      @apply text-xs font-semibold text-ink-soft line-clamp-3;
+    }
+  }
+
   /* Horizontal poster rail: shared by Trending Now and Recently Viewed — a
      scrollable row of poster tiles (poster on top, title below), with a rank
      badge overlaid for Trending. The right-edge mask hints "scrolls". */

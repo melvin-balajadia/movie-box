@@ -15,6 +15,7 @@ import {
 } from "react-icons/lu";
 import Search from "../components/Search";
 import MovieCard from "../components/MovieCard";
+import PosterImage from "../components/PosterImage";
 import SkeletonCard from "../components/SkeletonCard";
 import Spinner from "../components/Spinner";
 import Footer from "../components/Footer";
@@ -363,7 +364,7 @@ function Home() {
                 <li key={movie.$id}>
                   <Link to={`/movie/${movie.movie_id}`} className="poster-tile">
                     <div className="poster-wrap">
-                      <img src={movie.poster_url} alt={movie.title} />
+                      <PosterImage src={movie.poster_url} alt={movie.title} />
                       <span className="rank">{index + 1}</span>
                     </div>
                     <p className="title">{movie.title}</p>
@@ -383,11 +384,11 @@ function Home() {
                 <li key={movie.id}>
                   <Link to={`/movie/${movie.id}`} className="poster-tile">
                     <div className="poster-wrap">
-                      <img
+                      <PosterImage
                         src={
                           movie.poster_path
                             ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
-                            : "/no-movie.png"
+                            : null
                         }
                         alt={movie.title}
                       />

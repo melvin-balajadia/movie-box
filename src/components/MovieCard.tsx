@@ -3,6 +3,7 @@
 import { Link } from "react-router-dom";
 import { LuBookmark, LuBookmarkCheck } from "react-icons/lu";
 import { useWatchlist } from "./WatchlistProvider";
+import PosterImage from "./PosterImage";
 
 type Movie = {
   id: number;
@@ -49,11 +50,9 @@ const MovieCard: React.FC<{
   return (
     <Link to={`/${mediaType}/${id}`} className="movie-card">
       <div className="poster">
-        <img
+        <PosterImage
           src={
-            poster_path
-              ? `https://image.tmdb.org/t/p/w500/${poster_path}`
-              : "/no-movie.png"
+            poster_path ? `https://image.tmdb.org/t/p/w500/${poster_path}` : null
           }
           alt={title}
         />
