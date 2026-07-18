@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { RatedMovie, WatchlistMovie } from "./utils";
+import { MediaType, RatedMovie, WatchlistMovie } from "./utils";
 
 const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY: string = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -90,17 +90,19 @@ export const getTrendingMovies = async (): Promise<
 // Postgres row-level security policies (see README) — unlike the searches
 // table, this data is genuinely personal, so RLS actually matters here.
 
-export const getWatchlistIds = async (userId: string): Promise<number[]> => {
+// Returns saved rows as "mediaType:movieId" keys so callers can tell a saved
+// movie apart from a TV show with the same numeric id.
+export const getWatchlistKeys = async (userId: string): Promise<string[]> => {
   try {
     const { data, error } = await supabase
       .from(WATCHLIST_TABLE)
-      .select("movie_id")
+      .select("movie_id, media_type")
       .eq("user_id", userId);
 
     if (error) throw error;
-    return (data || []).map((row) => row.movie_id);
+    return (data || []).map((row) => `${row.media_type}:${row.movie_id}`);
   } catch (error) {
-    console.error("Error fetching watchlist ids:", error);
+    console.error("Error fetching watchlist keys:", error);
     return [];
   }
 };
@@ -111,7 +113,7 @@ export const getWatchlistMovies = async (
   try {
     const { data, error } = await supabase
       .from(WATCHLIST_TABLE)
-      .select("movie_id, title, poster_path, vote_average, release_date, original_language")
+      .select("movie_id, media_type, title, poster_path, vote_average, release_date, original_language")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
@@ -119,6 +121,7 @@ export const getWatchlistMovies = async (
 
     return (data || []).map((row) => ({
       id: row.movie_id,
+      media_type: (row.media_type as MediaType) || "movie",
       title: row.title,
       poster_path: row.poster_path,
       vote_average: row.vote_average,
@@ -139,6 +142,7 @@ export const addToWatchlist = async (
     const { error } = await supabase.from(WATCHLIST_TABLE).insert({
       user_id: userId,
       movie_id: movie.id,
+      media_type: movie.media_type,
       title: movie.title,
       poster_path: movie.poster_path,
       vote_average: movie.vote_average,
@@ -154,14 +158,16 @@ export const addToWatchlist = async (
 
 export const removeFromWatchlist = async (
   userId: string,
-  movieId: number
+  movieId: number,
+  mediaType: MediaType
 ): Promise<void> => {
   try {
     const { error } = await supabase
       .from(WATCHLIST_TABLE)
       .delete()
       .eq("user_id", userId)
-      .eq("movie_id", movieId);
+      .eq("movie_id", movieId)
+      .eq("media_type", mediaType);
 
     if (error) throw error;
   } catch (error) {
@@ -175,7 +181,8 @@ export const removeFromWatchlist = async (
 
 export const getUserRating = async (
   userId: string,
-  movieId: number
+  movieId: number,
+  mediaType: MediaType
 ): Promise<number | null> => {
   try {
     const { data, error } = await supabase
@@ -183,6 +190,7 @@ export const getUserRating = async (
       .select("rating")
       .eq("user_id", userId)
       .eq("movie_id", movieId)
+      .eq("media_type", mediaType)
       .maybeSingle();
 
     if (error) throw error;
@@ -199,11 +207,12 @@ export const setRating = async (
   rating: number
 ): Promise<void> => {
   try {
-    // Upsert on (user_id, movie_id) so re-rating updates the existing row.
+    // Upsert on (user_id, media_type, movie_id) so re-rating updates in place.
     const { error } = await supabase.from(RATINGS_TABLE).upsert(
       {
         user_id: userId,
         movie_id: movie.id,
+        media_type: movie.media_type,
         rating,
         title: movie.title,
         poster_path: movie.poster_path,
@@ -212,7 +221,7 @@ export const setRating = async (
         original_language: movie.original_language,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "user_id,movie_id" }
+      { onConflict: "user_id,media_type,movie_id" }
     );
 
     if (error) throw error;
@@ -223,14 +232,16 @@ export const setRating = async (
 
 export const removeRating = async (
   userId: string,
-  movieId: number
+  movieId: number,
+  mediaType: MediaType
 ): Promise<void> => {
   try {
     const { error } = await supabase
       .from(RATINGS_TABLE)
       .delete()
       .eq("user_id", userId)
-      .eq("movie_id", movieId);
+      .eq("movie_id", movieId)
+      .eq("media_type", mediaType);
 
     if (error) throw error;
   } catch (error) {
@@ -244,7 +255,7 @@ export const getRatedMovies = async (
   try {
     const { data, error } = await supabase
       .from(RATINGS_TABLE)
-      .select("movie_id, rating, title, poster_path, vote_average, release_date, original_language")
+      .select("movie_id, media_type, rating, title, poster_path, vote_average, release_date, original_language")
       .eq("user_id", userId)
       .order("updated_at", { ascending: false });
 
@@ -252,6 +263,7 @@ export const getRatedMovies = async (
 
     return (data || []).map((row) => ({
       id: row.movie_id,
+      media_type: (row.media_type as MediaType) || "movie",
       rating: row.rating,
       title: row.title,
       poster_path: row.poster_path,

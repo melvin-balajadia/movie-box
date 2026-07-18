@@ -12,12 +12,15 @@ import Footer from "../components/Footer";
 import { useAuth } from "../components/AuthProvider";
 import { getWatchlistMovies } from "../utilities/supabase";
 import { API_BASE_URL, API_OPTIONS, Movies, WatchlistMovie } from "../utilities/utils";
+import { usePageTitle } from "../utilities/usePageTitle";
 
 function Watchlist() {
   const { user, authLoading, openAuthModal } = useAuth();
   const [movies, setMovies] = useState<WatchlistMovie[]>([]);
   const [suggestions, setSuggestions] = useState<Movies[]>([]);
   const [loading, setLoading] = useState(true);
+
+  usePageTitle("Your Watchlist");
 
   useEffect(() => {
     if (!user) {
@@ -112,7 +115,11 @@ function Watchlist() {
           <section className="all-movies">
             <ul>
               {movies.map((movie) => (
-                <MovieCard key={movie.id} movie={movie} />
+                <MovieCard
+                  key={`${movie.media_type}-${movie.id}`}
+                  movie={movie}
+                  mediaType={movie.media_type}
+                />
               ))}
             </ul>
           </section>

@@ -13,7 +13,12 @@ type Movie = {
   original_language: string;
 };
 
-const MovieCard: React.FC<{ movie: Movie }> = ({
+// mediaType controls the link target (/movie or /tv) and which watchlist
+// bucket the bookmark writes to.
+const MovieCard: React.FC<{
+  movie: Movie;
+  mediaType?: "movie" | "tv";
+}> = ({
   movie: {
     id,
     title,
@@ -22,9 +27,10 @@ const MovieCard: React.FC<{ movie: Movie }> = ({
     release_date,
     original_language,
   },
+  mediaType = "movie",
 }) => {
   const { isSaved, toggle } = useWatchlist();
-  const saved = isSaved(id);
+  const saved = isSaved(id, mediaType);
 
   const handleToggle = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -36,11 +42,12 @@ const MovieCard: React.FC<{ movie: Movie }> = ({
       vote_average,
       release_date,
       original_language,
+      media_type: mediaType,
     });
   };
 
   return (
-    <Link to={`/movie/${id}`} className="movie-card">
+    <Link to={`/${mediaType}/${id}`} className="movie-card">
       <div className="poster">
         <img
           src={

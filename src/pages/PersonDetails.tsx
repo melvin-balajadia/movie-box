@@ -8,6 +8,7 @@ import PersonSkeleton from "../components/PersonSkeleton";
 import MovieCard from "../components/MovieCard";
 import Footer from "../components/Footer";
 import { API_BASE_URL, API_OPTIONS, Person, PersonMovieCredit } from "../utilities/utils";
+import { usePageTitle } from "../utilities/usePageTitle";
 
 function PersonDetails() {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +17,8 @@ function PersonDetails() {
   const [credits, setCredits] = useState<PersonMovieCredit[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+
+  usePageTitle(person?.name);
 
   useEffect(() => {
     const fetchPerson = async () => {

@@ -4,15 +4,18 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './components/AuthProvider.tsx'
+import { ToastProvider } from './components/ToastProvider.tsx'
 import { WatchlistProvider } from './components/WatchlistProvider.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <WatchlistProvider>
-          <App />
-        </WatchlistProvider>
+        <ToastProvider>
+          <WatchlistProvider>
+            <App />
+          </WatchlistProvider>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

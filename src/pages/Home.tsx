@@ -31,30 +31,49 @@ import {
   TrendingMovie,
 } from "../utilities/utils";
 
-type Category = "popular" | "top_rated" | "upcoming" | "now_playing";
+type MediaType = "movie" | "tv";
+type Category =
+  | "popular"
+  | "top_rated"
+  | "upcoming"
+  | "now_playing"
+  | "on_the_air"
+  | "airing_today";
 
-const CATEGORIES: { key: Category; label: string }[] = [
-  { key: "popular", label: "Popular" },
-  { key: "top_rated", label: "Top Rated" },
-  { key: "upcoming", label: "Upcoming" },
-  { key: "now_playing", label: "Now Playing" },
-];
-
-const CATEGORY_ENDPOINTS: Record<Category, string> = {
-  popular: "movie/popular",
-  top_rated: "movie/top_rated",
-  upcoming: "movie/upcoming",
-  now_playing: "movie/now_playing",
+// Category tabs and sort options differ between movies and TV (different TMDB
+// endpoints and sort_by fields), so they're keyed by media type.
+const CATEGORY_SETS: Record<MediaType, { key: Category; label: string }[]> = {
+  movie: [
+    { key: "popular", label: "Popular" },
+    { key: "top_rated", label: "Top Rated" },
+    { key: "upcoming", label: "Upcoming" },
+    { key: "now_playing", label: "Now Playing" },
+  ],
+  tv: [
+    { key: "popular", label: "Popular" },
+    { key: "top_rated", label: "Top Rated" },
+    { key: "on_the_air", label: "On the Air" },
+    { key: "airing_today", label: "Airing Today" },
+  ],
 };
 
-const SORT_OPTIONS: { value: string; label: string }[] = [
-  { value: "popularity.desc", label: "Most Popular" },
-  { value: "vote_average.desc", label: "Highest Rated" },
-  { value: "primary_release_date.desc", label: "Newest" },
-  { value: "title.asc", label: "Title (A–Z)" },
-];
+const SORT_SETS: Record<MediaType, { value: string; label: string }[]> = {
+  movie: [
+    { value: "popularity.desc", label: "Most Popular" },
+    { value: "vote_average.desc", label: "Highest Rated" },
+    { value: "primary_release_date.desc", label: "Newest" },
+    { value: "title.asc", label: "Title (A–Z)" },
+  ],
+  tv: [
+    { value: "popularity.desc", label: "Most Popular" },
+    { value: "vote_average.desc", label: "Highest Rated" },
+    { value: "first_air_date.desc", label: "Newest" },
+    { value: "name.asc", label: "Name (A–Z)" },
+  ],
+};
 
 function buildEndpoint(
+  mediaType: MediaType,
   query: string,
   genre: number | null,
   category: Category,
@@ -62,7 +81,7 @@ function buildEndpoint(
   page: number
 ) {
   if (query) {
-    return `${API_BASE_URL}/search/movie?query=${encodeURIComponent(
+    return `${API_BASE_URL}/search/${mediaType}?query=${encodeURIComponent(
       query
     )}&page=${page}`;
   }
@@ -71,10 +90,23 @@ function buildEndpoint(
     // with a perfect score from a handful of votes.
     const ratingFloor =
       sort === "vote_average.desc" ? "&vote_count.gte=200" : "";
-    return `${API_BASE_URL}/discover/movie?with_genres=${genre}&sort_by=${sort}${ratingFloor}&page=${page}`;
+    return `${API_BASE_URL}/discover/${mediaType}?with_genres=${genre}&sort_by=${sort}${ratingFloor}&page=${page}`;
   }
-  return `${API_BASE_URL}/${CATEGORY_ENDPOINTS[category]}?page=${page}`;
+  return `${API_BASE_URL}/${mediaType}/${category}?page=${page}`;
 }
+
+// TV results use name/first_air_date; normalize to the card's movie-ish shape.
+const normalizeResult = (r: any, mediaType: MediaType): Movies =>
+  mediaType === "tv"
+    ? {
+        id: r.id,
+        title: r.name,
+        vote_average: r.vote_average,
+        poster_path: r.poster_path,
+        release_date: r.first_air_date || "",
+        original_language: r.original_language,
+      }
+    : r;
 
 function Home() {
   const { user } = useAuth();
@@ -97,6 +129,7 @@ function Home() {
     movies: Movies[];
   } | null>(null);
 
+  const [mediaType, setMediaType] = useState<MediaType>("movie");
   const [genres, setGenres] = useState<Genre[]>([]);
   const [activeGenre, setActiveGenre] = useState<number | null>(null);
   const [activeCategory, setActiveCategory] = useState<Category>("popular");
@@ -118,6 +151,7 @@ function Home() {
 
     try {
       const endpoint = buildEndpoint(
+        mediaType,
         debounceSearchTerm,
         activeGenre,
         activeCategory,
@@ -125,7 +159,9 @@ function Home() {
         pageToLoad
       );
       const response = await axios.get(endpoint, API_OPTIONS);
-      const results: Movies[] = response.data.results || [];
+      const results: Movies[] = (response.data.results || []).map((r: any) =>
+        normalizeResult(r, mediaType)
+      );
       setTotalPages(response.data.total_pages || 1);
 
       setMovieList((prev) => {
@@ -136,7 +172,13 @@ function Home() {
         return [...prev, ...results.filter((m) => !seen.has(m.id))];
       });
 
-      if (debounceSearchTerm && pageToLoad === 1 && results.length > 0)
+      // Search-count trending is movie-only (it links to /movie).
+      if (
+        mediaType === "movie" &&
+        debounceSearchTerm &&
+        pageToLoad === 1 &&
+        results.length > 0
+      )
         await updateSearchCount(debounceSearchTerm, results[0]);
     } catch (error) {
       console.log(error);
@@ -149,12 +191,12 @@ function Home() {
     }
   };
 
-  // Reset to page 1 and reload whenever the query/filters change.
+  // Reset to page 1 and reload whenever the query/filters/media type change.
   useEffect(() => {
     setPage(1);
     fetchMovies(1, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debounceSearchTerm, activeCategory, activeGenre, sortBy]);
+  }, [debounceSearchTerm, activeCategory, activeGenre, sortBy, mediaType]);
 
   // Infinite scroll: load the next page when the sentinel scrolls into view.
   useEffect(() => {
@@ -180,14 +222,18 @@ function Home() {
     observer.observe(el);
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, totalPages, initialLoading, loadingMore, debounceSearchTerm, activeCategory, activeGenre, sortBy]);
+  }, [page, totalPages, initialLoading, loadingMore, debounceSearchTerm, activeCategory, activeGenre, sortBy, mediaType]);
+
+  // Genre list depends on the media type (movie vs tv genres differ).
+  useEffect(() => {
+    axios
+      .get(`${API_BASE_URL}/genre/${mediaType}/list`, API_OPTIONS)
+      .then((res) => setGenres(res.data.genres || []))
+      .catch((err) => console.log(err));
+  }, [mediaType]);
 
   useEffect(() => {
     getTrendingMovies().then((movies) => setTrendingMovies((movies as any) || []));
-    axios
-      .get(`${API_BASE_URL}/genre/movie/list`, API_OPTIONS)
-      .then((res) => setGenres(res.data.genres || []))
-      .catch((err) => console.log(err));
     axios
       .get(`${API_BASE_URL}/movie/popular?page=1`, API_OPTIONS)
       .then((res) => {
@@ -234,6 +280,17 @@ function Home() {
     !initialLoading && !errorMessage && !hasResults && debounceSearchTerm !== "";
   const isBrowsing = debounceSearchTerm === "";
 
+  const categories = CATEGORY_SETS[mediaType];
+  const sortOptions = SORT_SETS[mediaType];
+
+  const handleMediaChange = (type: MediaType) => {
+    if (type === mediaType) return;
+    setMediaType(type);
+    setActiveCategory("popular");
+    setActiveGenre(null);
+    setSortBy("popularity.desc");
+  };
+
   return (
     <main>
       <div className="wrapper">
@@ -241,14 +298,16 @@ function Home() {
             the headline + search, so the page reads as a movie site at a
             glance. Falls back to a plain dark panel until the backdrop loads. */}
         <header className="home-hero">
-          {spotlight?.backdrop_path && (
-            <img
-              className="home-hero-bg"
-              src={`https://image.tmdb.org/t/p/w1280${spotlight.backdrop_path}`}
-              alt=""
-              aria-hidden="true"
-            />
-          )}
+          <div className="home-hero-media" aria-hidden="true">
+            {spotlight?.backdrop_path && (
+              <img
+                className="home-hero-bg"
+                src={`https://image.tmdb.org/t/p/w1280${spotlight.backdrop_path}`}
+                alt=""
+              />
+            )}
+            <div className="home-hero-scrim" />
+          </div>
           <div className="home-hero-inner">
             <span className="home-hero-eyebrow">Now Showing</span>
             <h1>
@@ -354,7 +413,28 @@ function Home() {
         )}
 
         <section className="all-movies">
-          <h2>Browse All Movies</h2>
+          <h2>Browse All {mediaType === "tv" ? "TV Shows" : "Movies"}</h2>
+
+          {/* Movies / TV switch — always visible so it applies to browsing
+              and searching alike. */}
+          <div className="media-toggle">
+            <button
+              className={`media-toggle-btn ${
+                mediaType === "movie" ? "active" : ""
+              }`}
+              onClick={() => handleMediaChange("movie")}
+            >
+              Movies
+            </button>
+            <button
+              className={`media-toggle-btn ${
+                mediaType === "tv" ? "active" : ""
+              }`}
+              onClick={() => handleMediaChange("tv")}
+            >
+              TV Shows
+            </button>
+          </div>
 
           {isBrowsing && (
             <div className="browse-toolbar">
@@ -363,7 +443,7 @@ function Home() {
               <div className="filter-group">
                 <p className="filter-label">Category</p>
                 <div className="category-tabs">
-                  {CATEGORIES.map((category) => (
+                  {categories.map((category) => (
                     <button
                       key={category.key}
                       className={`category-tab ${
@@ -421,7 +501,7 @@ function Home() {
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
                     >
-                      {SORT_OPTIONS.map((option) => (
+                      {sortOptions.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
@@ -459,7 +539,7 @@ function Home() {
           {!initialLoading && !errorMessage && hasResults && (
             <ul>
               {movieList.map((movie) => (
-                <MovieCard key={movie.id} movie={movie} />
+                <MovieCard key={movie.id} movie={movie} mediaType={mediaType} />
               ))}
             </ul>
           )}

@@ -1,19 +1,26 @@
-// Site-wide top bar shown on every page: wordmark, watchlist link, and
+// Site-wide sticky header: branded logo lockup, watchlist/ratings links, and
 // sign-in/account controls.
 import { Link } from "react-router-dom";
-import { LuBookmark, LuStar, LuLogOut } from "react-icons/lu";
+import { LuBookmark, LuStar, LuLogOut, LuClapperboard } from "react-icons/lu";
 import { useAuth } from "./AuthProvider";
+import ThemeToggle from "./ThemeToggle";
 
 const SiteNav = () => {
   const { user, authLoading, signOut, openAuthModal } = useAuth();
 
   return (
-    <nav className="site-nav">
-      <Link to="/" className="site-logo">
-        Movie Box
-      </Link>
+    <header className="site-header">
+      <nav className="site-nav">
+        <Link to="/" className="site-logo" aria-label="Movie Box — home">
+          <span className="logo-mark">
+            <LuClapperboard aria-hidden="true" />
+          </span>
+          <span className="logo-word">
+            Movie<span className="logo-accent">Box</span>
+          </span>
+        </Link>
 
-      <div className="site-nav-actions">
+        <div className="site-nav-actions">
         <Link to="/ratings" className="watchlist-link" aria-label="Ratings">
           <LuStar aria-hidden="true" />
           <span className="nav-label">Ratings</span>
@@ -28,18 +35,34 @@ const SiteNav = () => {
           <span className="nav-label">Watchlist</span>
         </Link>
 
+        <ThemeToggle />
+
         {!authLoading && (
           <>
             {user ? (
-              <button
-                type="button"
-                className="nav-user"
-                onClick={signOut}
-                title="Sign out"
-              >
-                <span className="nav-email">{user.email}</span>
-                <LuLogOut aria-hidden="true" />
-              </button>
+              <>
+                <Link to="/profile" className="nav-user" title="Profile">
+                  <span className="nav-avatar">
+                    {(
+                      (user.user_metadata?.full_name as string) ||
+                      user.email ||
+                      "?"
+                    )
+                      .charAt(0)
+                      .toUpperCase()}
+                  </span>
+                  <span className="nav-email">{user.email}</span>
+                </Link>
+                <button
+                  type="button"
+                  className="theme-toggle"
+                  onClick={signOut}
+                  aria-label="Sign out"
+                  title="Sign out"
+                >
+                  <LuLogOut aria-hidden="true" />
+                </button>
+              </>
             ) : (
               <button
                 type="button"
@@ -51,8 +74,9 @@ const SiteNav = () => {
             )}
           </>
         )}
-      </div>
-    </nav>
+        </div>
+      </nav>
+    </header>
   );
 };
 

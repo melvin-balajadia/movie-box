@@ -1,6 +1,7 @@
-// Movie details page: backdrop banner with poster/title/rating/genres, the
-// overview, cast & crew, where to watch, the trailer, similar movies, reviews,
-// and a few extra facts (budget/revenue/production).
+// TV show details page — mirrors the movie details page but for TV's data
+// shape (name/first_air_date, seasons/episodes, creators, networks). Reuses
+// the shared VideoPlayer / MovieGallery / MovieCard components in "tv" mode.
+// Watchlist/ratings are movie-only for now, so they're omitted here.
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
@@ -17,12 +18,11 @@ import DetailsSkeleton from "../components/DetailsSkeleton";
 import VideoPlayer from "../components/VideoPlayer";
 import MovieGallery from "../components/MovieGallery";
 import MovieCard from "../components/MovieCard";
-import Footer from "../components/Footer";
 import StarRating from "../components/StarRating";
+import Footer from "../components/Footer";
 import { useWatchlist } from "../components/WatchlistProvider";
 import { useAuth } from "../components/AuthProvider";
 import { useToast } from "../components/ToastProvider";
-import { addRecentlyViewed } from "../utilities/recentlyViewed";
 import { usePageTitle } from "../utilities/usePageTitle";
 import {
   getUserRating,
@@ -32,17 +32,14 @@ import {
 import {
   API_BASE_URL,
   API_OPTIONS,
-  Collection,
   Credits,
   Movies,
-  MovieDetail,
   Review,
+  TvDetail,
   WatchProviderRegion,
   WatchProvidersResponse,
 } from "../utilities/utils";
 
-// Turn a country code ("US") into a display name ("United States") without a
-// bundled lookup table, via the built-in Intl API.
 const REGION_NAMES = new Intl.DisplayNames(["en"], { type: "region" });
 const regionName = (code: string) => {
   try {
@@ -52,76 +49,69 @@ const regionName = (code: string) => {
   }
 };
 
-const formatRuntime = (minutes: number) => {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${hours}h ${mins}m`;
-};
+// TV recommendations come back with name/first_air_date; normalize to the
+// card's movie-ish shape so MovieCard can render them (in "tv" mode).
+const toCard = (show: any): Movies => ({
+  id: show.id,
+  title: show.name,
+  vote_average: show.vote_average,
+  poster_path: show.poster_path,
+  release_date: show.first_air_date || "",
+  original_language: show.original_language,
+});
 
-function MovieDetails() {
+function TvDetails() {
   const { id } = useParams<{ id: string }>();
 
-  const [movie, setMovie] = useState<MovieDetail | null>(null);
+  const [show, setShow] = useState<TvDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
   const [credits, setCredits] = useState<Credits | null>(null);
-  const [recommendations, setRecommendations] = useState<Movies[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
   const [watchRegions, setWatchRegions] = useState<
     Record<string, WatchProviderRegion>
   >({});
   const [region, setRegion] = useState("US");
   const [reviews, setReviews] = useState<Review[]>([]);
-  const [collection, setCollection] = useState<Collection | null>(null);
   const [copied, setCopied] = useState(false);
   const [userRating, setUserRating] = useState(0);
 
   const { isSaved, toggle } = useWatchlist();
   const { user, openAuthModal } = useAuth();
-  const { show } = useToast();
+  const { show: showToast } = useToast();
 
-  useEffect(() => {
-    const fetchMovie = async () => {
-      setLoading(true);
-      setErrorMessage("");
-      try {
-        const response = await axios.get<MovieDetail>(
-          `${API_BASE_URL}/movie/${id}`,
-          API_OPTIONS
-        );
-        setMovie(response.data);
-        addRecentlyViewed({
-          id: response.data.id,
-          title: response.data.title,
-          poster_path: response.data.poster_path,
-        });
-      } catch (error) {
-        console.log(error);
-        setErrorMessage(
-          "Something went wrong while fetching this movie. Please try again."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMovie();
-  }, [id]);
-
-  // Load the signed-in user's existing rating for this movie (0 = unrated).
   useEffect(() => {
     if (!user || !id) {
       setUserRating(0);
       return;
     }
-    getUserRating(user.id, Number(id), "movie").then((r) =>
-      setUserRating(r ?? 0)
-    );
+    getUserRating(user.id, Number(id), "tv").then((r) => setUserRating(r ?? 0));
   }, [user, id]);
 
   useEffect(() => {
-    // Reset so a click-through from "More Like This" doesn't briefly show
-    // the previous movie's cast/recommendations while the new ones load.
+    const fetchShow = async () => {
+      setLoading(true);
+      setErrorMessage("");
+      try {
+        const response = await axios.get<TvDetail>(
+          `${API_BASE_URL}/tv/${id}`,
+          API_OPTIONS
+        );
+        setShow(response.data);
+      } catch (error) {
+        console.log(error);
+        setErrorMessage(
+          "Something went wrong while fetching this show. Please try again."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchShow();
+  }, [id]);
+
+  useEffect(() => {
     setCredits(null);
     setRecommendations([]);
     setWatchRegions({});
@@ -129,71 +119,44 @@ function MovieDetails() {
 
     const fetchExtras = async () => {
       try {
-        const response = await axios.get<Credits>(
-          `${API_BASE_URL}/movie/${id}/credits`,
+        const res = await axios.get<Credits>(
+          `${API_BASE_URL}/tv/${id}/credits`,
           API_OPTIONS
         );
-        setCredits(response.data);
+        setCredits(res.data);
       } catch (error) {
         console.log(error);
       }
-
       try {
-        const response = await axios.get(
-          `${API_BASE_URL}/movie/${id}/recommendations`,
+        const res = await axios.get(
+          `${API_BASE_URL}/tv/${id}/recommendations`,
           API_OPTIONS
         );
-        setRecommendations((response.data.results || []).slice(0, 8));
+        setRecommendations((res.data.results || []).slice(0, 8));
       } catch (error) {
         console.log(error);
       }
-
       try {
-        const response = await axios.get<WatchProvidersResponse>(
-          `${API_BASE_URL}/movie/${id}/watch/providers`,
+        const res = await axios.get<WatchProvidersResponse>(
+          `${API_BASE_URL}/tv/${id}/watch/providers`,
           API_OPTIONS
         );
-        setWatchRegions(response.data.results || {});
+        setWatchRegions(res.data.results || {});
       } catch (error) {
         console.log(error);
       }
-
       try {
-        const response = await axios.get(
-          `${API_BASE_URL}/movie/${id}/reviews`,
+        const res = await axios.get(
+          `${API_BASE_URL}/tv/${id}/reviews`,
           API_OPTIONS
         );
-        setReviews((response.data.results || []).slice(0, 3));
+        setReviews((res.data.results || []).slice(0, 3));
       } catch (error) {
         console.log(error);
       }
     };
-
     fetchExtras();
   }, [id]);
-
-  const collectionId = movie?.belongs_to_collection?.id;
-
-  useEffect(() => {
-    if (!collectionId) {
-      setCollection(null);
-      return;
-    }
-
-    const fetchCollection = async () => {
-      try {
-        const response = await axios.get<Collection>(
-          `${API_BASE_URL}/collection/${collectionId}`,
-          API_OPTIONS
-        );
-        setCollection(response.data);
-      } catch (error) {
-        console.log(error);
-      }
-    };
-
-    fetchCollection();
-  }, [collectionId]);
 
   const handleShare = async () => {
     try {
@@ -205,49 +168,38 @@ function MovieDetails() {
     }
   };
 
+  // Watchlist/rating payload for this show (media_type "tv").
+  const asItem = show && {
+    id: show.id,
+    title: show.name,
+    poster_path: show.poster_path,
+    vote_average: show.vote_average,
+    release_date: show.first_air_date || "",
+    original_language: show.original_language,
+    media_type: "tv" as const,
+  };
+
   const handleRate = (rating: number) => {
     if (!user) {
       openAuthModal();
       return;
     }
-    if (!movie) return;
-
-    // Optimistic: reflect the new rating immediately, persist in background.
+    if (!asItem) return;
     setUserRating(rating);
-    const meta = {
-      id: movie.id,
-      title: movie.title,
-      poster_path: movie.poster_path,
-      vote_average: movie.vote_average,
-      release_date: movie.release_date,
-      original_language: movie.original_language,
-      media_type: "movie" as const,
-    };
     if (rating === 0) {
-      removeRating(user.id, movie.id, "movie");
-      show("Rating removed");
+      removeRating(user.id, asItem.id, "tv");
+      showToast("Rating removed");
     } else {
-      setRating(user.id, meta, rating);
-      show(`Rated ${rating}/5`);
+      setRating(user.id, asItem, rating);
+      showToast(`Rated ${rating}/5`);
     }
   };
 
-  usePageTitle(
-    movie
-      ? `${movie.title}${
-          movie.release_date ? ` (${movie.release_date.split("-")[0]})` : ""
-        }`
-      : undefined
-  );
+  usePageTitle(show?.name);
 
-  const director = credits?.crew.find((member) => member.job === "Director");
-
-  // "Where to watch" data is keyed by country. Default to US, fall back to the
-  // first available region, and let the user switch between what's available.
   const availableRegions = Object.keys(watchRegions).sort();
   const activeRegion = watchRegions[region] ? region : availableRegions[0];
   const watchProviders = activeRegion ? watchRegions[activeRegion] : null;
-
   const watchProviderList = watchProviders?.flatrate?.length
     ? { label: "Stream on", providers: watchProviders.flatrate }
     : watchProviders?.rent?.length
@@ -256,12 +208,9 @@ function MovieDetails() {
     ? { label: "Buy on", providers: watchProviders.buy }
     : null;
 
+  const runtime = show?.episode_run_time?.[0];
   const hasFacts =
-    movie &&
-    (movie.status ||
-      movie.budget > 0 ||
-      movie.revenue > 0 ||
-      movie.production_companies.length > 0);
+    show && (show.status || show.networks?.length || show.number_of_episodes);
 
   return (
     <main>
@@ -271,13 +220,8 @@ function MovieDetails() {
             <LuArrowLeft aria-hidden="true" />
             Back to search
           </Link>
-
-          {movie && (
-            <button
-              type="button"
-              className="share-button"
-              onClick={handleShare}
-            >
+          {show && (
+            <button type="button" className="share-button" onClick={handleShare}>
               {copied ? (
                 <>
                   <LuCheck aria-hidden="true" />
@@ -301,64 +245,61 @@ function MovieDetails() {
           </div>
         )}
 
-        {!loading && !errorMessage && movie && (
+        {!loading && !errorMessage && show && (
           <>
             <section className="details-hero">
-              {movie.backdrop_path && (
+              {show.backdrop_path && (
                 <img
                   className="backdrop"
-                  src={`https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`}
+                  src={`https://image.tmdb.org/t/p/w1280${show.backdrop_path}`}
                   alt=""
                   aria-hidden="true"
                 />
               )}
-
               <div
                 className={`details-hero-content ${
-                  movie.backdrop_path ? "" : "no-backdrop"
+                  show.backdrop_path ? "" : "no-backdrop"
                 }`}
               >
                 <img
                   className="poster"
                   src={
-                    movie.poster_path
-                      ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+                    show.poster_path
+                      ? `https://image.tmdb.org/t/p/w500${show.poster_path}`
                       : "/no-movie.png"
                   }
-                  alt={movie.title}
+                  alt={show.name}
                 />
-
                 <div>
-                  <h1 className="page-heading">{movie.title}</h1>
-                  {movie.tagline && <p className="tagline">{movie.tagline}</p>}
-
+                  <h1 className="page-heading">{show.name}</h1>
+                  {show.tagline && <p className="tagline">{show.tagline}</p>}
                   <div className="meta-row">
                     <span className="rating-pill">
                       <LuStar aria-hidden="true" />
-                      {movie.vote_average ? movie.vote_average.toFixed(1) : "N/A"}
+                      {show.vote_average ? show.vote_average.toFixed(1) : "N/A"}
                       <span className="text-ink-soft font-normal">
-                        ({movie.vote_count.toLocaleString()})
+                        ({show.vote_count.toLocaleString()})
                       </span>
                     </span>
                     <span>
-                      {movie.release_date
-                        ? movie.release_date.split("-")[0]
+                      {show.first_air_date
+                        ? show.first_air_date.split("-")[0]
                         : "N/A"}
                     </span>
-                    {movie.runtime > 0 && (
-                      <span className="flex items-center gap-1">
-                        <LuClock aria-hidden="true" />
-                        {formatRuntime(movie.runtime)}
-                      </span>
-                    )}
-                    <span className="capitalize">
-                      {movie.original_language}
+                    <span>
+                      {show.number_of_seasons}{" "}
+                      {show.number_of_seasons === 1 ? "season" : "seasons"}
                     </span>
+                    {runtime ? (
+                      <span className="flex items-center gap-1">
+                        <LuClock aria-hidden="true" />~{runtime}m/ep
+                      </span>
+                    ) : null}
+                    <span className="capitalize">{show.original_language}</span>
                   </div>
-
-                  {movie.genres.length > 0 && (
+                  {show.genres.length > 0 && (
                     <div className="genres">
-                      {movie.genres.map((genre) => (
+                      {show.genres.map((genre) => (
                         <span key={genre.id} className="genre-chip">
                           {genre.name}
                         </span>
@@ -366,35 +307,27 @@ function MovieDetails() {
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    className={`watchlist-button ${
-                      isSaved(movie.id, "movie") ? "saved" : ""
-                    }`}
-                    onClick={() =>
-                      toggle({
-                        id: movie.id,
-                        title: movie.title,
-                        poster_path: movie.poster_path,
-                        vote_average: movie.vote_average,
-                        release_date: movie.release_date,
-                        original_language: movie.original_language,
-                        media_type: "movie",
-                      })
-                    }
-                  >
-                    {isSaved(movie.id, "movie") ? (
-                      <>
-                        <LuBookmarkCheck aria-hidden="true" />
-                        In Watchlist
-                      </>
-                    ) : (
-                      <>
-                        <LuBookmark aria-hidden="true" />
-                        Add to Watchlist
-                      </>
-                    )}
-                  </button>
+                  {asItem && (
+                    <button
+                      type="button"
+                      className={`watchlist-button ${
+                        isSaved(show.id, "tv") ? "saved" : ""
+                      }`}
+                      onClick={() => toggle(asItem)}
+                    >
+                      {isSaved(show.id, "tv") ? (
+                        <>
+                          <LuBookmarkCheck aria-hidden="true" />
+                          In Watchlist
+                        </>
+                      ) : (
+                        <>
+                          <LuBookmark aria-hidden="true" />
+                          Add to Watchlist
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             </section>
@@ -405,7 +338,7 @@ function MovieDetails() {
                 <StarRating value={userRating} onChange={handleRate} />
                 <span className="rating-hint">
                   {!user
-                    ? "Sign in to rate this movie"
+                    ? "Sign in to rate this show"
                     : userRating > 0
                     ? `You rated this ${userRating}/5`
                     : "Tap a star to rate"}
@@ -414,28 +347,18 @@ function MovieDetails() {
 
               <h2>Overview</h2>
               <p className="overview-text">
-                {movie.overview || "No overview available."}
+                {show.overview || "No overview available."}
               </p>
 
-              {collection && collection.parts.length > 1 && (
-                <>
-                  <h2>Part of {collection.name}</h2>
-                  <ul className="more-like-this">
-                    {collection.parts
-                      .filter((part) => part.id !== movie.id)
-                      .map((part) => (
-                        <MovieCard key={part.id} movie={part} />
-                      ))}
-                  </ul>
-                </>
-              )}
-
-              {credits && (credits.cast.length > 0 || director) && (
+              {credits && (credits.cast.length > 0 || show.created_by.length > 0) && (
                 <>
                   <h2>Cast &amp; Crew</h2>
-                  {director && (
+                  {show.created_by.length > 0 && (
                     <p className="director-line">
-                      Directed by <strong>{director.name}</strong>
+                      Created by{" "}
+                      <strong>
+                        {show.created_by.map((c) => c.name).join(", ")}
+                      </strong>
                     </p>
                   )}
                   {credits.cast.length > 0 && (
@@ -503,16 +426,16 @@ function MovieDetails() {
               )}
 
               <h2>Trailer</h2>
-              <VideoPlayer movieId={movie.id} />
+              <VideoPlayer movieId={show.id} mediaType="tv" />
 
-              <MovieGallery movieId={movie.id} />
+              <MovieGallery movieId={show.id} mediaType="tv" />
 
               {recommendations.length > 0 && (
                 <>
                   <h2>More Like This</h2>
                   <ul className="more-like-this">
                     {recommendations.map((rec) => (
-                      <MovieCard key={rec.id} movie={rec} />
+                      <MovieCard key={rec.id} movie={toCard(rec)} mediaType="tv" />
                     ))}
                   </ul>
                 </>
@@ -548,32 +471,22 @@ function MovieDetails() {
                 <>
                   <h2>Details</h2>
                   <dl className="fact-list">
-                    {movie.status && (
+                    {show.status && (
                       <>
                         <dt>Status</dt>
-                        <dd>{movie.status}</dd>
+                        <dd>{show.status}</dd>
                       </>
                     )}
-                    {movie.budget > 0 && (
+                    {show.number_of_episodes > 0 && (
                       <>
-                        <dt>Budget</dt>
-                        <dd>${movie.budget.toLocaleString()}</dd>
+                        <dt>Episodes</dt>
+                        <dd>{show.number_of_episodes}</dd>
                       </>
                     )}
-                    {movie.revenue > 0 && (
+                    {show.networks?.length > 0 && (
                       <>
-                        <dt>Revenue</dt>
-                        <dd>${movie.revenue.toLocaleString()}</dd>
-                      </>
-                    )}
-                    {movie.production_companies.length > 0 && (
-                      <>
-                        <dt>Production</dt>
-                        <dd>
-                          {movie.production_companies
-                            .map((company) => company.name)
-                            .join(", ")}
-                        </dd>
+                        <dt>Network</dt>
+                        <dd>{show.networks.map((n) => n.name).join(", ")}</dd>
                       </>
                     )}
                   </dl>
@@ -589,4 +502,4 @@ function MovieDetails() {
   );
 }
 
-export default MovieDetails;
+export default TvDetails;

@@ -10,11 +10,14 @@ import Footer from "../components/Footer";
 import { useAuth } from "../components/AuthProvider";
 import { getRatedMovies } from "../utilities/supabase";
 import { RatedMovie } from "../utilities/utils";
+import { usePageTitle } from "../utilities/usePageTitle";
 
 function Ratings() {
   const { user, authLoading, openAuthModal } = useAuth();
   const [movies, setMovies] = useState<RatedMovie[]>([]);
   const [loading, setLoading] = useState(true);
+
+  usePageTitle("Your Ratings");
 
   useEffect(() => {
     if (!user) {
@@ -80,8 +83,11 @@ function Ratings() {
           <section className="all-movies">
             <ul>
               {movies.map((movie) => (
-                <li key={movie.id} className="rated-item">
-                  <MovieCard movie={movie} />
+                <li
+                  key={`${movie.media_type}-${movie.id}`}
+                  className="rated-item"
+                >
+                  <MovieCard movie={movie} mediaType={movie.media_type} />
                   <StarRating value={movie.rating} readOnly />
                 </li>
               ))}

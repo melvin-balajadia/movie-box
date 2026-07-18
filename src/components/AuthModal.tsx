@@ -1,6 +1,6 @@
 // Sign-in modal: Google OAuth, or email with a choice of magic link vs
 // password (and signup vs signin within the password flow).
-import { useState, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { LuX } from "react-icons/lu";
 import { useAuth } from "./AuthProvider";
 import { supabase } from "../utilities/supabase";
@@ -17,6 +17,48 @@ const AuthModal = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // While open: Escape closes, Tab is trapped inside the modal, focus moves
+  // into it, and returns to the trigger on close. (Basic modal a11y.)
+  useEffect(() => {
+    if (!isAuthModalOpen) return;
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const getFocusable = () =>
+      Array.from(
+        modalRef.current?.querySelectorAll<HTMLElement>(
+          'button, input, [href], select, textarea, [tabindex]:not([tabindex="-1"])'
+        ) ?? []
+      ).filter((el) => !el.hasAttribute("disabled"));
+
+    getFocusable()[0]?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeAuthModal();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const els = getFocusable();
+      if (els.length === 0) return;
+      const first = els[0];
+      const last = els[els.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, [isAuthModalOpen, closeAuthModal]);
 
   if (!isAuthModalOpen) return null;
 
@@ -69,13 +111,17 @@ const AuthModal = () => {
     method === "magiclink"
       ? "Send Magic Link"
       : mode === "signup"
-      ? "Create Account"
-      : "Sign In";
+        ? "Create Account"
+        : "Sign In";
 
   return (
     <div className="auth-modal-overlay" onClick={closeAuthModal}>
       <div
+        ref={modalRef}
         className="auth-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Sign in"
         onClick={(event) => event.stopPropagation()}
       >
         <button

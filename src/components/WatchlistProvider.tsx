@@ -1,8 +1,8 @@
-// App-wide watchlist state. Fetches the signed-in user's saved movie ids
-// once and exposes toggle/isSaved so any MovieCard can show/flip its heart
-// button without every card re-querying Supabase (avoids an N+1 query per
-// grid). Saving requires an account — toggling while signed out opens the
-// sign-in modal instead of writing anything.
+// App-wide watchlist state. Fetches the signed-in user's saved items once and
+// exposes toggle/isSaved so any card can show/flip its bookmark without an
+// N+1 query. Items are keyed by "mediaType:id" so a saved movie and a TV show
+// with the same numeric id don't collide. Saving requires an account —
+// toggling while signed out opens the sign-in modal instead of writing.
 import {
   createContext,
   useContext,
@@ -11,59 +11,73 @@ import {
   ReactNode,
 } from "react";
 import { useAuth } from "./AuthProvider";
+import { useToast } from "./ToastProvider";
 import {
-  getWatchlistIds,
+  getWatchlistKeys,
   addToWatchlist,
   removeFromWatchlist,
 } from "../utilities/supabase";
+import { MediaType } from "../utilities/utils";
+
+type ToggleItem = {
+  id: number;
+  title: string;
+  poster_path: string;
+  vote_average: number;
+  release_date: string;
+  original_language: string;
+  media_type: MediaType;
+};
 
 interface WatchlistContextValue {
-  isSaved: (id: number) => boolean;
-  toggle: (movie: {
-    id: number;
-    title: string;
-    poster_path: string;
-    vote_average: number;
-    release_date: string;
-    original_language: string;
-  }) => void;
+  isSaved: (id: number, mediaType?: MediaType) => boolean;
+  toggle: (item: ToggleItem) => void;
 }
 
 const WatchlistContext = createContext<WatchlistContextValue | null>(null);
 
+const keyOf = (id: number, mediaType: MediaType) => `${mediaType}:${id}`;
+
 export const WatchlistProvider = ({ children }: { children: ReactNode }) => {
   const { user, openAuthModal } = useAuth();
-  const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
+  const { show } = useToast();
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) {
-      setSavedIds(new Set());
+      setSavedKeys(new Set());
       return;
     }
-    getWatchlistIds(user.id).then((ids) => setSavedIds(new Set(ids)));
+    getWatchlistKeys(user.id).then((keys) => setSavedKeys(new Set(keys)));
   }, [user]);
 
-  const isSaved = (id: number) => savedIds.has(id);
+  const isSaved = (id: number, mediaType: MediaType = "movie") =>
+    savedKeys.has(keyOf(id, mediaType));
 
-  const toggle: WatchlistContextValue["toggle"] = (movie) => {
+  const toggle = (item: ToggleItem) => {
     if (!user) {
       openAuthModal();
       return;
     }
 
-    const alreadySaved = savedIds.has(movie.id);
+    const key = keyOf(item.id, item.media_type);
+    const alreadySaved = savedKeys.has(key);
 
-    // Optimistic update — the UI flips immediately, the Supabase write
-    // happens in the background (errors are logged, not rolled back).
-    setSavedIds((prev) => {
+    // Optimistic update — UI flips immediately, Supabase write is background.
+    setSavedKeys((prev) => {
       const next = new Set(prev);
-      if (alreadySaved) next.delete(movie.id);
-      else next.add(movie.id);
+      if (alreadySaved) next.delete(key);
+      else next.add(key);
       return next;
     });
 
-    if (alreadySaved) removeFromWatchlist(user.id, movie.id);
-    else addToWatchlist(user.id, movie);
+    if (alreadySaved) {
+      removeFromWatchlist(user.id, item.id, item.media_type);
+      show("Removed from watchlist");
+    } else {
+      addToWatchlist(user.id, item);
+      show("Added to watchlist");
+    }
   };
 
   return (

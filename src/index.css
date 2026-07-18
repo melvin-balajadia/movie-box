@@ -3,17 +3,32 @@
 @import "tailwindcss";
 
 @theme {
-  /* Simple palette: plain white/light-gray surfaces, one amber accent. */
+  /* Simple palette: plain white/light-gray surfaces, one amber accent.
+     `paper`/`ink` flip in dark mode (see below); `night` is a fixed dark used
+     for elements that stay dark in both themes (hero panel, toasts, etc.). */
   --color-paper: #ffffff;
   --color-paper-light: #f6f5f3;
   --color-ink: #14181c;
   --color-ink-soft: #6b7280;
   --color-amber: #e8a63c;
   --color-amber-dark: #c98a22;
+  --color-night: #14181c;
 
   --font-body: "Work Sans", sans-serif;
 
   --breakpoint-xs: 480px;
+}
+
+/* Dark theme: override the flipping tokens. Cards (`paper-light`) sit lighter
+   than the page (`paper`) for elevation; `ink` becomes near-white text; the
+   amber accent is nudged brighter so it stays legible on dark. `night` and
+   `amber` are intentionally not overridden. */
+:root[data-theme="dark"] {
+  --color-paper: #0f1115;
+  --color-paper-light: #191d24;
+  --color-ink: #f3f4f6;
+  --color-ink-soft: #9aa3b2;
+  --color-amber-dark: #f0b95c;
 }
 
 @layer base {
@@ -57,13 +72,32 @@
     @apply px-5 py-12 xs:p-10 max-w-6xl mx-auto flex flex-col;
   }
 
-  /* Site-wide top bar, shown above the wrapper on every page. */
-  .site-nav {
-    @apply flex items-center justify-between max-w-6xl mx-auto px-5 xs:px-10 pt-6;
+  /* Sticky, translucent header that stays put over the long scrolling page,
+     with a subtle blur + hairline so it reads as a distinct bar. */
+  .site-header {
+    @apply sticky top-0 z-20 border-b border-ink/10 bg-paper/80 backdrop-blur-md;
   }
 
+  .site-nav {
+    @apply flex items-center justify-between max-w-6xl mx-auto px-5 xs:px-10 py-3.5;
+  }
+
+  /* Branded logo lockup: a clapperboard icon in an amber tile + a two-tone
+     "MovieBox" wordmark. */
   .site-logo {
-    @apply font-extrabold text-lg text-ink whitespace-nowrap shrink-0;
+    @apply inline-flex items-center gap-2.5 shrink-0;
+  }
+
+  .logo-mark {
+    @apply flex items-center justify-center w-7.5 h-7.5 rounded-xl bg-amber text-white text-xl shadow-sm;
+  }
+
+  .logo-word {
+    @apply font-extrabold text-xl tracking-tight text-ink;
+  }
+
+  .logo-accent {
+    @apply text-amber-dark;
   }
 
   .site-nav-actions {
@@ -80,6 +114,10 @@
     @apply hidden xs:inline;
   }
 
+  .theme-toggle {
+    @apply flex items-center justify-center w-9 h-9 rounded-full text-ink-soft transition-colors hover:text-ink hover:bg-ink/5 text-lg;
+  }
+
   .nav-signin {
     @apply px-4 py-1.5 rounded-full text-sm font-semibold bg-amber text-white transition-colors hover:bg-amber-dark;
   }
@@ -93,12 +131,33 @@
   }
 
   .back-to-top {
-    @apply fixed bottom-6 right-6 flex items-center justify-center w-11 h-11 rounded-full bg-ink text-white shadow-lg transition-colors hover:bg-ink/80 z-20;
+    @apply fixed bottom-6 right-6 flex items-center justify-center w-11 h-11 rounded-full bg-night text-white shadow-lg transition-colors hover:bg-night/80 z-20;
+  }
+
+  /* Transient action-confirmation toasts, stacked bottom-center. */
+  .toast-stack {
+    @apply fixed bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-40 pointer-events-none;
+  }
+
+  .toast {
+    @apply bg-night text-white text-sm font-medium px-4 py-2.5 rounded-full shadow-lg;
+    animation: toast-in 0.16s ease-out;
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
 
   /* Sign-in modal */
   .auth-modal-overlay {
-    @apply fixed inset-0 bg-ink/50 flex items-center justify-center p-5 z-30;
+    @apply fixed inset-0 bg-night/50 flex items-center justify-center p-5 z-30;
   }
 
   .auth-modal {
@@ -150,19 +209,23 @@
   }
 
   /* Cinematic home hero: the featured backdrop fills the panel, a dark scrim
-     keeps the centered headline/search legible over any image. isolate makes
-     the -z-10 background/scrim paint within the hero, not behind the page. */
+     keeps the centered headline/search legible. The backdrop + scrim live in
+     their own clipped media layer so the search autocomplete dropdown (in the
+     content layer) can overflow the hero without being cut off. */
   .home-hero {
-    @apply relative isolate overflow-hidden rounded-3xl bg-ink flex flex-col items-center justify-center text-center px-5 py-16 sm:py-24 min-h-[480px] sm:min-h-[560px];
+    @apply relative isolate rounded-3xl bg-night flex flex-col items-center justify-center text-center px-5 py-16 sm:py-24 min-h-[480px] sm:min-h-[560px];
+  }
+
+  .home-hero-media {
+    @apply absolute inset-0 -z-10 rounded-3xl overflow-hidden;
   }
 
   .home-hero-bg {
-    @apply absolute inset-0 w-full h-full object-cover -z-10;
+    @apply absolute inset-0 w-full h-full object-cover;
   }
 
-  .home-hero::after {
-    content: "";
-    @apply absolute inset-0 -z-10;
+  .home-hero-scrim {
+    @apply absolute inset-0;
     background: linear-gradient(
       to bottom,
       rgba(20, 24, 28, 0.78),
@@ -227,22 +290,62 @@
   /* Search bar: the hero's primary action, so it gets a shadow that lifts
      on focus rather than sitting completely flat like the other pills. */
   .ticket-search {
-    @apply w-full bg-paper-light border border-ink/10 rounded-full mt-8 max-w-2xl mx-auto shadow-sm transition-shadow;
+    @apply relative w-full bg-paper-light border border-ink/10 rounded-full mt-8 max-w-2xl mx-auto shadow-sm transition-shadow;
 
     &:focus-within {
       @apply shadow-md border-amber/40;
     }
 
-    & div {
+    /* Scoped to the input row so it doesn't also flex-row the dropdown, which
+       is a sibling div inside .ticket-search. */
+    & .ticket-search-row {
       @apply relative flex items-center gap-3 px-5 py-4;
     }
 
-    & svg {
+    & .ticket-search-row svg {
       @apply text-ink-soft text-lg shrink-0;
     }
 
-    & input {
+    & .ticket-search-row input {
       @apply w-full bg-transparent text-base text-ink placeholder-ink-soft/70 outline-hidden;
+    }
+  }
+
+  /* Autocomplete dropdown under the search box (recent terms + live
+     movie/person suggestions). */
+  .search-dropdown {
+    @apply absolute left-0 right-0 top-full mt-2 z-30 bg-paper border border-ink/10 rounded-2xl shadow-xl py-2 text-left max-h-[70vh] overflow-y-auto;
+  }
+
+  .search-dropdown-label {
+    @apply px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-ink-soft;
+  }
+
+  .search-recent {
+    @apply w-full flex items-center gap-2 px-4 py-2 text-sm text-ink transition-colors hover:bg-ink/5;
+
+    & svg {
+      @apply text-ink-soft;
+    }
+  }
+
+  .search-suggestion {
+    @apply w-full flex items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-ink/5;
+
+    & img {
+      @apply w-9 h-12 object-cover rounded shrink-0 bg-paper-light;
+    }
+  }
+
+  .search-suggestion-text {
+    @apply flex flex-col min-w-0;
+
+    & .title {
+      @apply text-sm font-semibold text-ink line-clamp-1;
+    }
+
+    & .sub {
+      @apply text-xs text-ink-soft;
     }
   }
 
@@ -258,8 +361,16 @@
 
     & ul {
       @apply flex flex-row overflow-x-auto gap-4 pb-2 w-full hide-scrollbar;
-      -webkit-mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%);
-      mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%);
+      -webkit-mask-image: linear-gradient(
+        to right,
+        black calc(100% - 40px),
+        transparent 100%
+      );
+      mask-image: linear-gradient(
+        to right,
+        black calc(100% - 40px),
+        transparent 100%
+      );
     }
 
     & ul li {
@@ -283,11 +394,24 @@
     }
 
     & .rank {
-      @apply absolute top-2 left-2 flex items-center justify-center w-7 h-7 rounded-full bg-amber text-ink font-bold text-sm shadow;
+      @apply absolute top-2 left-2 flex items-center justify-center w-7 h-7 rounded-full bg-amber text-night font-bold text-sm shadow;
     }
 
     & p.title {
       @apply mt-2 text-sm font-semibold text-ink line-clamp-2;
+    }
+  }
+
+  /* Movies / TV switch above the browse filters. */
+  .media-toggle {
+    @apply inline-flex gap-1 p-1 rounded-full bg-paper-light border border-ink/10 mb-5;
+  }
+
+  .media-toggle-btn {
+    @apply px-5 py-2 rounded-full text-sm font-semibold text-ink-soft transition-colors hover:text-ink;
+
+    &.active {
+      @apply bg-amber text-white;
     }
   }
 
@@ -354,11 +478,11 @@
     }
 
     & .rating-stamp {
-      @apply absolute top-3 right-3 flex items-center justify-center w-10 h-10 rounded-full bg-amber text-ink font-bold text-sm;
+      @apply absolute top-3 right-3 flex items-center justify-center w-10 h-10 rounded-full bg-amber text-night font-bold text-sm;
     }
 
     & .watchlist-toggle {
-      @apply absolute top-3 left-3 flex items-center justify-center w-9 h-9 rounded-full bg-ink/60 text-white backdrop-blur-sm transition-colors hover:bg-ink/80;
+      @apply absolute top-3 left-3 flex items-center justify-center w-9 h-9 rounded-full bg-night/60 text-white backdrop-blur-sm transition-colors hover:bg-night/80;
 
       &.saved {
         @apply bg-amber text-white;
@@ -534,12 +658,136 @@
     @apply flex flex-col gap-2;
   }
 
+  /* Nav avatar: initial in an amber circle, links to the profile. */
+  .nav-avatar {
+    @apply flex items-center justify-center w-8 h-8 rounded-full bg-amber text-night font-bold text-sm shrink-0;
+  }
+
+  /* Profile page */
+  .profile-hero {
+    @apply flex flex-wrap items-center justify-between gap-4 mb-8;
+  }
+
+  .profile-identity {
+    @apply flex items-center gap-4;
+  }
+
+  .profile-avatar {
+    @apply w-16 h-16 rounded-full object-cover shrink-0;
+  }
+
+  .profile-avatar-initial {
+    @apply flex items-center justify-center bg-amber text-night font-extrabold text-2xl;
+  }
+
+  .stat-grid {
+    @apply grid grid-cols-1 xs:grid-cols-3 gap-4;
+  }
+
+  .stat-tile {
+    @apply flex flex-col items-center justify-center gap-1 py-6 rounded-2xl bg-paper-light border border-ink/10 transition-shadow;
+  }
+
+  a.stat-tile:hover {
+    @apply shadow-md;
+  }
+
+  .stat-value {
+    @apply text-3xl font-extrabold text-ink;
+  }
+
+  .stat-label {
+    @apply text-xs font-semibold uppercase tracking-wide text-ink-soft;
+  }
+
+  .rating-dist {
+    @apply mt-4 flex flex-col gap-2 max-w-md;
+  }
+
+  .dist-row {
+    @apply flex items-center gap-3 text-sm;
+  }
+
+  .dist-star {
+    @apply w-8 font-semibold text-ink shrink-0;
+  }
+
+  .dist-track {
+    @apply flex-1 h-2.5 rounded-full bg-ink/10 overflow-hidden;
+  }
+
+  .dist-fill {
+    @apply block h-full bg-amber rounded-full;
+  }
+
+  .dist-count {
+    @apply w-6 text-right text-ink-soft shrink-0;
+  }
+
   .video-frame {
-    @apply relative w-full aspect-video rounded-2xl overflow-hidden bg-ink;
+    @apply relative w-full aspect-video rounded-2xl overflow-hidden bg-night;
 
     & iframe {
       @apply absolute inset-0 w-full h-full;
     }
+  }
+
+  /* Thumbnail rail for switching between multiple trailers/teasers. */
+  .video-rail {
+    @apply mt-3 flex flex-row gap-3 overflow-x-auto pb-2 hide-scrollbar;
+
+    & li {
+      @apply w-40 shrink-0;
+    }
+
+    & .video-thumb {
+      @apply block w-full text-left rounded-lg overflow-hidden border border-ink/10 transition-colors;
+    }
+
+    & .video-thumb.active {
+      @apply border-amber;
+    }
+
+    & .video-thumb img {
+      @apply w-full aspect-video object-cover;
+    }
+
+    & .video-name {
+      @apply block px-2 py-1.5 text-xs text-ink-soft line-clamp-1;
+    }
+  }
+
+  /* Backdrop-still gallery rail + full-size lightbox overlay. */
+  .gallery-rail {
+    @apply mt-4 flex flex-row gap-4 overflow-x-auto pb-2 hide-scrollbar;
+
+    & li {
+      @apply shrink-0;
+    }
+
+    & .gallery-thumb {
+      @apply block w-64 sm:w-80 rounded-xl overflow-hidden border border-ink/10 transition-shadow hover:shadow-md;
+    }
+
+    & .gallery-thumb img {
+      @apply w-full aspect-video object-cover;
+    }
+  }
+
+  .lightbox {
+    @apply fixed inset-0 z-40 flex items-center justify-center p-4 bg-night/90;
+
+    & img {
+      @apply max-w-full max-h-full rounded-lg;
+    }
+  }
+
+  .lightbox-close {
+    @apply absolute top-4 right-4 flex items-center justify-center w-10 h-10 rounded-full bg-white/10 text-white text-xl hover:bg-white/20;
+  }
+
+  .watch-header {
+    @apply flex flex-wrap items-center gap-3 mb-3;
   }
 
   .director-line {
@@ -552,8 +800,16 @@
      movie has more cast than fits in view. */
   .cast-row {
     @apply mt-4 flex flex-row overflow-x-auto gap-4 pb-2 hide-scrollbar;
-    -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
-    mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
+    -webkit-mask-image: linear-gradient(
+      to right,
+      black calc(100% - 32px),
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to right,
+      black calc(100% - 32px),
+      transparent 100%
+    );
 
     & li {
       @apply min-w-[130px] shrink-0;
